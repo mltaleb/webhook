@@ -25,23 +25,34 @@ app.post(
   async (req: Request, res: Response): Promise<void> => {
     // Step 1: Handle Microsoft Graph Validation Request
     if (req.query.validationToken) {
-      console.log("🔔 Received validation token:", req.query.validationToken)
+      console.log("Received validation token:", req.query.validationToken)
       res.status(200).send(req.query.validationToken) // Respond with token in plain text
       return
     }
 
     // Step 2: Handle actual notifications
-    const { value } = req.body
-    if (!value || !value.length) {
-      res.status(400).send("No data received")
+    const notifications = req.body?.value
+    if (!notifications || !Array.isArray(notifications)) {
+      res.status(400).send("Invalid notification format")
       return
     }
 
-    console.log("🔔 New Message Notification:", value)
+    notifications.forEach(notification => {
+      console.log(" New Notification Received:", notification)
 
-    // Notify all connected clients (frontend)
-    clients.forEach(client => {
-      client.send(JSON.stringify({ type: "NEW_MESSAGE", data: value }))
+      if (notification.resourceData) {
+        console.log(" Updated Thread Data:", notification.resourceData)
+
+        // Notify all connected clients (frontend)
+        clients.forEach(client => {
+          client.send(
+            JSON.stringify({
+              type: "NEW_MESSAGE",
+              data: notification.resourceData,
+            })
+          )
+        })
+      }
     })
 
     res.status(200).send("Received")
@@ -50,4 +61,4 @@ app.post(
 
 // Start the server
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => console.log(`🚀 Webhook server running on port ${PORT}`))
+app.listen(PORT, () => console.log(` Webhook server running on port ${PORT}`))
