@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express"
 import bodyParser from "body-parser"
-import { WebSocketServer, WebSocket } from "ws" // Ensure correct import
+import { WebSocketServer, WebSocket } from "ws"
 
 const app = express()
 app.use(bodyParser.json())
@@ -23,8 +23,16 @@ wss.on("connection", (ws: WebSocket) => {
 app.post(
   "/webhook-handler",
   async (req: Request, res: Response): Promise<void> => {
-    const { value } = req.body
+    const { validationToken, value } = req.body
 
+    // ✅ Step 1: Handle validation request
+    if (validationToken) {
+      console.log("🔹 Responding to Microsoft Graph validation request")
+      res.status(200).send(validationToken) // Echo back the token
+      return
+    }
+
+    // ✅ Step 2: Handle notifications
     if (!value || !value.length) {
       res.status(400).send("No data received")
       return
@@ -37,8 +45,7 @@ app.post(
       client.send(JSON.stringify({ type: "NEW_MESSAGE", data: value }))
     })
 
-    res.status(200).send("Received") // Added `return`
-    return
+    res.status(200).send("Received")
   }
 )
 
