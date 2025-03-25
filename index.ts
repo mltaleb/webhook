@@ -1,11 +1,18 @@
 import express, { Request, Response } from "express"
 import bodyParser from "body-parser"
-import { WebSocketServer, WebSocket } from "ws" // Ensure correct import
+import { WebSocketServer, WebSocket } from "ws"
+import http from "http" // Import HTTP module
 
 const app = express()
 app.use(bodyParser.json())
 
-const wss = new WebSocketServer({ port: 8080 }) // WebSocket server
+const PORT = process.env.PORT || 8080 // Use Render’s public port
+
+// Create HTTP server
+const server = http.createServer(app)
+
+// Attach WebSocket to the same HTTP server
+const wss = new WebSocketServer({ server })
 
 // Store connected clients
 const clients: Set<WebSocket> = new Set()
@@ -20,17 +27,16 @@ wss.on("connection", (ws: WebSocket) => {
   })
 })
 
+// Webhook handler
 app.post(
   "/webhook-handler",
   async (req: Request, res: Response): Promise<void> => {
-    // Step 1: Handle Microsoft Graph Validation Request
     if (req.query.validationToken) {
-      console.log("Received validation token:", req.query.validationToken)
-      res.status(200).send(req.query.validationToken) // Respond with token in plain text
+      console.log(" Received validation token:", req.query.validationToken)
+      res.status(200).send(req.query.validationToken)
       return
     }
 
-    // Step 2: Handle actual notifications
     const notifications = req.body?.value
     if (!notifications || !Array.isArray(notifications)) {
       res.status(400).send("Invalid notification format")
@@ -38,12 +44,12 @@ app.post(
     }
 
     notifications.forEach(notification => {
-      console.log(" New Notification Received:", notification)
+      console.log("📨 New Notification Received:", notification)
 
       if (notification.resourceData) {
-        console.log(" Updated Thread Data:", notification.resourceData)
+        console.log("🆕 Updated Thread Data:", notification.resourceData)
 
-        // Notify all connected clients (frontend)
+        // Notify all connected WebSocket clients
         clients.forEach(client => {
           client.send(
             JSON.stringify({
@@ -55,10 +61,9 @@ app.post(
       }
     })
 
-    res.status(200).send("Received")
+    res.status(200).send("✅ Received")
   }
 )
 
-// Start the server
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => console.log(` Webhook server running on port ${PORT}`))
+// Start the combined HTTP & WebSocket server
+server.listen(PORT, () => console.log(` Server running on port ${PORT}`))
