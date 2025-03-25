@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express"
 import bodyParser from "body-parser"
-import { WebSocketServer, WebSocket } from "ws"
+import { WebSocketServer, WebSocket } from "ws" // Ensure correct import
 
 const app = express()
 app.use(bodyParser.json())
@@ -23,16 +23,15 @@ wss.on("connection", (ws: WebSocket) => {
 app.post(
   "/webhook-handler",
   async (req: Request, res: Response): Promise<void> => {
-    const { validationToken, value } = req.body
-
-    // ✅ Step 1: Handle validation request
-    if (validationToken) {
-      console.log("🔹 Responding to Microsoft Graph validation request")
-      res.status(200).send(validationToken) // Echo back the token
+    // Step 1: Handle Microsoft Graph Validation Request
+    if (req.query.validationToken) {
+      console.log("🔔 Received validation token:", req.query.validationToken)
+      res.status(200).send(req.query.validationToken) // Respond with token in plain text
       return
     }
 
-    // ✅ Step 2: Handle notifications
+    // Step 2: Handle actual notifications
+    const { value } = req.body
     if (!value || !value.length) {
       res.status(400).send("No data received")
       return
@@ -49,5 +48,6 @@ app.post(
   }
 )
 
+// Start the server
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`🚀 Webhook server running on port ${PORT}`))
